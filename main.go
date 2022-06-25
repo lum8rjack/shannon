@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
+	"io"
 	"math"
 	"os"
 )
@@ -39,24 +41,46 @@ func DataEntropy(d []byte) float64 {
 
 func FileEntropy(filename string) (float64, error) {
 	var ent float64
+	m := map[byte]float64{}
 
-	data, err := os.ReadFile(filename)
+	f, err := os.Open(filename)
 	if err != nil {
 		return ent, err
 	}
+	defer f.Close()
 
-	m := map[byte]float64{}
-	for _, r := range data {
-		m[r]++
+	b := bufio.NewReader(f)
+
+	var buf [1]byte
+	filelength := 0
+
+	for {
+		_, err := b.Read(buf[:])
+		if err == io.EOF {
+			break
+		}
+
+		m[buf[0]]++
+		filelength++
 	}
+
+	l := float64(filelength)
+
 	var hm float64
 	for _, c := range m {
 		hm += c * math.Log2(c)
 	}
-	l := float64(len(data))
+
 	ent = math.Log2(l) - hm/l
 
 	return ent, nil
+}
+
+func must(err error) {
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(0)
+	}
 }
 
 func main() {
@@ -75,10 +99,7 @@ func main() {
 		fmt.Println(entropy)
 	} else {
 		entropy, err := FileEntropy(*filename)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(0)
-		}
+		must(err)
 		fmt.Println(entropy)
 	}
 }
